@@ -72,14 +72,21 @@ def handle_response(text):
 def log_message(user_id, text, response):
     log_file = 'log.txt'
     with open(log_file, 'a') as f:
+        text = text.replace('\n', ' ')
+        response = response.replace('\n\n', '\n')
         f.write(f'User ({user_id}): "{text}"\n')
         f.write(f'Bot: {response}\n')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_type = update.message.chat.type
     text = update.message.text
-    
-    if not text.startswith("/"):
+    if text.startswith("/"):
+        command = text.split("/")[1]  # "/" ile bölünmüş ikinci parçayı alıyoruz
+        commands_list = ['savunmasanayihaberleri', 'yatirimhaberleri', 'celikyatirim', 'encokyukselenhisseler', 'encokislemgorenhisseler']
+        if not command ==  "savunmasanayihaberleri":
+            await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın.')
+            return
+    else:
         await update.message.reply_text('Lütfen geçerli bir komut girin. Komutlar "/" ile başlamalıdır.')
         return
     
@@ -91,11 +98,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             response = handle_response(text)
     else:
         response = handle_response(text)
-    await update.message.reply_text(response)
-    log_message(update.message.chat.id, text, response)
-
-async def invalid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Hatalı komut girdiniz!')
+    
+    if response is None:
+        await update.message.reply_text('Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
+        log_message(update.message.chat.id, text, 'Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
+    else:
+        await update.message.reply_text(response)
+        log_message(update.message.chat.id, text, response)
 
 async def savunma_sanayi_haberleri_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -130,12 +139,17 @@ async def en_cok_islem_goren_hisseler_command(update: Update, context: ContextTy
 if __name__ == '__main__':
     print('Bot Başlatıldı...')
     app = Application.builder().token(TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT | (~filters.Command()), handle_message))
     app.add_handler(CommandHandler('savunmasanayihaberleri', savunma_sanayi_haberleri_command))
     app.add_handler(CommandHandler('yatirimhaberleri', yatirim_haberleri_command))
     app.add_handler(CommandHandler('celikyatirim', celik_yatirim_command))
     app.add_handler(CommandHandler('encokyukselenhisseler', en_cok_yukselen_hisseler_command))
     app.add_handler(CommandHandler('encokislemgorenhisseler', en_cok_islem_goren_hisseler_command))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.Command()), handle_message))
-    app.add_handler(MessageHandler(~filters.Command(), invalid_command))
     app.add_error_handler(error)
     app.run_polling(poll_interval=3)
+
+# savunmasanayihaberleri - Savunma Sanayii Haberleri
+# yatirimhaberleri - Yatırım Haberleri
+# celikyatirim - Yatırım Haberleri 2
+# encokyukselenhisseler - En Çok Yükselen Hisseler
+# encokislemgorenhisseler - En Çok İşlem Gören Hisseler
