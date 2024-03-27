@@ -10,6 +10,8 @@ url6 = "https://www.insaatyatirim.com/Haberler/yatirim-haberleri/13"
 url9 = "https://tr.steelorbis.com/celik-haberleri/guncel-haberler/yatirim?period=2023-03-25+-+2024-03-25&tl=1188-1504-1499&fCountry=1188&fTopic=1504&fTopic=1499&fromDate=2023-03-25&toDate=2024-03-25&submit=F%C4%B0LTRELE"
 url7 = "https://www.getmidas.com/canli-borsa/en-cok-artan-hisseler"
 url8 = "https://www.getmidas.com/canli-borsa/en-cok-islem-goren-hisseler"
+url2 = "https://www.trthaber.com/haber/turkiye/"
+url3 = "https://www.trthaber.com/haber/dunya/"
 
 TOKEN = "TOKEN"
 BOT_USERNAME = "@asistan_helper_bot"
@@ -21,7 +23,7 @@ def get_news_titles(url, tag_name, class_name):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     news_titles = soup.find_all(tag_name, class_=class_name)
-    titles = [title.text.strip() for title in news_titles]
+    titles = [title.text.strip().replace('Türkiye', '') for title in news_titles]
     return titles
 
 def get_news_titles_2(url):
@@ -54,6 +56,10 @@ def get_most_traded_stocks():
     titles = get_news_titles(url8, "a", "title stock-code")
     return "\n".join(titles[:30])
 
+def turkiye_haber():
+    titles = get_news_titles(url2, "a", "site-url")
+    return "\n".join(titles[30:68])
+
 def handle_response(text):
     processed = text.lower()
     if 'savunmasanayihaberleri' in processed:
@@ -66,6 +72,8 @@ def handle_response(text):
         return get_most_rising_stocks()
     elif 'encokislemgorenhisseler' in processed:
         return get_most_traded_stocks()
+    elif 'turkiye_haber' in processed:  # Yeni komut "/test"
+        return turkiye_haber()
     else:
         return 'Hatalı Komut Girdiniz!'
 
@@ -82,14 +90,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if text.startswith("/"):
         command = text.split("/")[1]  # "/" ile bölünmüş ikinci parçayı alıyoruz
-        commands_list = ['savunmasanayihaberleri', 'yatirimhaberleri', 'celikyatirim', 'encokyukselenhisseler', 'encokislemgorenhisseler']
-        if not command ==  "savunmasanayihaberleri":
+        if not (command == "savunmasanayihaberleri" or 
+                command == "yatirimhaberleri" or 
+                command == "celikyatirim" or 
+                command == "encokyukselenhisseler" or
+                command == "encokislemgorenhisseler" or
+                command == "turkiye_haber"):  # Yeni komut "/test"
             await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın.')
             return
     else:
         await update.message.reply_text('Lütfen geçerli bir komut girin. Komutlar "/" ile başlamalıdır.')
         return
-    
     if message_type == 'group':
         if BOT_USERNAME in text:
             new_text = text.replace(BOT_USERNAME, '').strip()
@@ -98,39 +109,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             response = handle_response(text)
     else:
         response = handle_response(text)
-    
     if response is None:
         await update.message.reply_text('Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
         log_message(update.message.chat.id, text, 'Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
     else:
         await update.message.reply_text(response)
         log_message(update.message.chat.id, text, response)
+        if "turkiye_haber" in text.lower():
+            await update.message.reply_text("Diğer haberlere buradan ulaşabilirsiniz: \n(https://www.trthaber.com/haber/turkiye/)")
 
-async def savunma_sanayi_haberleri_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def savunma_sanayi_haberleri_command(update: Update):
     text = update.message.text
     response = handle_response(text)
     await update.message.reply_text(response)
     log_message(update.message.chat.id, text, response)
 
-async def yatirim_haberleri_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def yatirim_haberleri_command(update: Update):
     text = update.message.text
     response = handle_response(text)
     await update.message.reply_text(response)
     log_message(update.message.chat.id, text, response)
 
-async def celik_yatirim_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def celik_yatirim_command(update: Update):
     text = update.message.text
     response = handle_response(text)
     await update.message.reply_text(response)
     log_message(update.message.chat.id, text, response)
 
-async def en_cok_yukselen_hisseler_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def en_cok_yukselen_hisseler_command(update: Update):
     text = update.message.text
     response = handle_response(text)
     await update.message.reply_text(response)
     log_message(update.message.chat.id, text, response)
 
-async def en_cok_islem_goren_hisseler_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def en_cok_islem_goren_hisseler_command(update: Update):
+    text = update.message.text
+    response = handle_response(text)
+    await update.message.reply_text(response)
+    log_message(update.message.chat.id, text, response)
+
+async def turkiye_haber_command(update: Update):  # Yeni komut "/test"
     text = update.message.text
     response = handle_response(text)
     await update.message.reply_text(response)
@@ -145,6 +163,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('celikyatirim', celik_yatirim_command))
     app.add_handler(CommandHandler('encokyukselenhisseler', en_cok_yukselen_hisseler_command))
     app.add_handler(CommandHandler('encokislemgorenhisseler', en_cok_islem_goren_hisseler_command))
+    app.add_handler(CommandHandler('turkiye_haber', turkiye_haber_command))  # Yeni komut "/test"
     app.add_error_handler(error)
     app.run_polling(poll_interval=3)
 
@@ -153,3 +172,4 @@ if __name__ == '__main__':
 # celikyatirim - Yatırım Haberleri 2
 # encokyukselenhisseler - En Çok Yükselen Hisseler
 # encokislemgorenhisseler - En Çok İşlem Gören Hisseler
+# turkiye_haber - Türkiye Son Dakika Haberleri 
