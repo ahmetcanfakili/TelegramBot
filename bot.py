@@ -1,8 +1,12 @@
+import os
 import requests
 from telegram import Update
 from datetime import datetime
 from bs4 import BeautifulSoup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+TOKEN = "TOKEN"
+BOT_USERNAME = "@yardimci_asistan_bot"
 
 url1 = "https://www.savunmasanayist.com/category/haberler/"
 url2 = "https://www.trthaber.com/haber/turkiye/"
@@ -16,59 +20,84 @@ url9 = "https://tr.steelorbis.com/celik-haberleri/guncel-haberler/yatirim?\
         period=2023-03-25+-+2024-03-25&tl=1188-1504-1499&fCountry=1188&f\
         Topic=1504&fTopic=1499&fromDate=2023-03-25&toDate=2024-03-25&submit=F%C4%B0LTRELE"
 
-TOKEN = "TOKEN"
-BOT_USERNAME = "@asistan_helper_bot"
-
-async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
 
-async def get_news_titles(url, tag_name, class_name):
+def get_news_titles(url, tag_name, class_name):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     news_titles = soup.find_all(tag_name, class_=class_name)
-    titles = [title.text.strip().replace('Türkiye', '') for title in news_titles]
+    titles = [title.text.strip().replace('', '') for title in news_titles]
     return titles
 
-async def get_news_titles_2(url):
+def get_news_titles_2(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     news_titles = soup.find_all('h3', class_="article-lead")
     titles = [title.text.strip().replace('Ücretsiz', '') for title in news_titles]
     return titles
 
-async def get_defense_news():
+def get_defense_news():
     titles1 = get_news_titles(url1, "h2", "post-title")
     titles2 = get_news_titles(url4, "a", "baslik history-add")
     combined_titles = "\n\n".join(titles1 + titles2)
     return combined_titles
 
-async def get_investment_news():
+def get_investment_news():
     titles1 = get_news_titles(url5, "a", "baslik history-add")
     titles2 = get_news_titles(url6, "h3", "title")
     combined_titles = "\n\n".join(titles1 + titles2)
     return combined_titles
 
-async def get_steel_investment_news():
+def get_steel_investment_news():
     return "\n".join(get_news_titles_2(url9))
 
-async def get_most_rising_stocks():
+def get_most_rising_stocks():
     titles = get_news_titles(url7, "a", "title stock-code")
     return "\n".join(titles[:30])
 
-async def get_most_traded_stocks():
+def get_most_traded_stocks():
     titles = get_news_titles(url8, "a", "title stock-code")
     return "\n".join(titles[:30])
 
-async def turkiye_haber():
+def turkiye_haber():
     titles = get_news_titles(url2, "a", "site-url")
     return "\n".join(titles[30:68])
 
 async def not_ekle(text, user_id):
-    filename = f'notlar_{user_id}.txt' 
+    folder_name = 'notlar_veritabani'
+    filename = os.path.join(folder_name, f'notlar_{user_id}.txt')
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    with open(filename, 'a') as f:
+        f.write(text + '\n\n')
+        
+async def notlari_gonder(update):
+    user_id = update.message.chat.id
+    folder_name = 'notlar_veritabani'
+    filename = os.path.join(folder_name, f'notlar_{user_id}.txt')
+    if os.path.exists(filename):
+        with open(filename, 'r') as f:
+            notlar = f.read()
+        if not notlar.strip(): 
+            await update.message.reply_text("Notunuz Bulunmamaktadır.")
+            await log_message(user_id, "İşlem Başarılı!", 'Not Bulunamadı!')
+        else:
+            await update.message.reply_text(notlar)
+            await log_message(user_id, "İşlem Başarılı!", 'Notlar Listelendi!')
+    else:
+        await update.message.reply_text("Notunuz Bulunmamaktadır.")
+        await log_message(user_id, "İşlem Başarılı!", 'Not Bulunamadı!')
+
+async def notlar(text, user_id):
+    folder_name = 'notlar_veritabani'
+    filename = os.path.join(folder_name, f'notlar_{user_id}.txt')
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
     with open(filename, 'a') as f:
         f.write(text + '\n\n')
 
-async def handle_response(text):
+def handle_response(text):
     processed = text.lower()
     if 'savunmasanayihaberleri' in processed:
         return get_defense_news()
@@ -105,6 +134,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if command == "not_ekle": 
             await not_ekle_command(update)  
             return
+        elif command == "notlar": 
+            await notlari_gonder(update)  
+            return
+        elif command == "start": 
+            await update.message.reply_text('Hoş Geldiniz.\nYardımcı Olabilmem İçin Komut Girin.')
+            return
         elif command not in ["savunmasanayihaberleri", "yatirimhaberleri", "celikyatirim",
                              "encokyukselenhisseler", "encokislemgorenhisseler", "turkiye_haber"]:
             await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın.')
@@ -122,7 +157,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = handle_response(text)
     if response is None:
         await update.message.reply_text('Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
-        await log_message(update.message.chat.id, text, 'Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
+        await log_message(update.message.chat.id, "İşlem Başarısız!", "Geçersiz Komut.")
     else:
         await update.message.reply_text(response)
         await log_message(update.message.chat.id, "İşlem Başarılı!", "Komut Çalıştırıldı.")
@@ -169,28 +204,33 @@ async def not_ekle_command(update: Update):
     user_id = update.message.chat.id
     text = update.message.text
     note_text = None
-    if len(text.split()) == 1: 
-        await update.message.reply_text('Not kaydetmek için: \n/not_ekle notunuzu_yazınız')
+    if len(text.split()) <= 1: 
+        await update.message.reply_text('Not kaydetmek için: \n\"/not_ekle 30.05.2024 14.00 - notunuzu_yazınız\"')
         await log_message(user_id, "İşlem Başarısız!", 'Not Kaydedilemedi!')
     else:
-        note_text = text.split("/not_ekle ")[1]
-        await not_ekle(note_text, user_id)
-        await update.message.reply_text('Notunuz Kaydedildi!')
-        await log_message(user_id, "İşlem Başarılı!", 'Not Kaydedildi!')
+        try:
+            parts = text.split("/not_ekle ")[1].split(" - ")
+            tarih, saat = parts[0].split(" ")
+            tarih_obj = datetime.strptime(tarih, "%d.%m.%Y")
+            saat_obj = datetime.strptime(saat, "%H.%M")
+            yeni_not = f"{tarih_obj.strftime('%d.%m.%Y')} {saat_obj.strftime('%H:%M')}\n{parts[1]}"
+            await not_ekle(yeni_not, user_id)
+            await update.message.reply_text('Notunuz Kaydedildi!')
+            await log_message(user_id, "İşlem Başarılı!", 'Not Kaydedildi!')
+        except Exception as e:
+            await update.message.reply_text('Not eklenirken bir hata oluştu. Lütfen geçerli bir tarih, saat ve not formatı kullanın.')
+            await log_message(user_id, "İşlem Başarısız!", f'Hata: {str(e)}')
 
 if __name__ == '__main__':
     print('Bot Başlatıldı...')
     app = Application.builder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT | (~filters.Command()), handle_message))
-
     app.add_handler(CommandHandler('savunmasanayihaberleri',  savunma_sanayi_haberleri_command   ))
     app.add_handler(CommandHandler('yatirimhaberleri',        yatirim_haberleri_command          ))
     app.add_handler(CommandHandler('celikyatirim',            celik_yatirim_command              ))
     app.add_handler(CommandHandler('encokyukselenhisseler',   en_cok_yukselen_hisseler_command   ))
     app.add_handler(CommandHandler('encokislemgorenhisseler', en_cok_islem_goren_hisseler_command))
     app.add_handler(CommandHandler('turkiye_haber',           turkiye_haber_command              )) 
-    app.add_handler(CommandHandler('not_ekle',                not_ekle_command                   )) 
-
     app.add_error_handler(error)
     app.run_polling(poll_interval=3)
 
@@ -200,4 +240,5 @@ if __name__ == '__main__':
 # encokyukselenhisseler - En Çok Yükselen Hisseler
 # encokislemgorenhisseler - En Çok İşlem Gören Hisseler
 # turkiye_haber - Türkiye Son Dakika Haberleri 
-# not_ekle notunuzu_yazınız - Hatırlatıcı Notu Eklenir
+# not_ekle - Hatırlatıcı Notu Eklenir
+# notlar - Tüm Notları Listeler
