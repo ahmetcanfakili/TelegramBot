@@ -1,4 +1,5 @@
 import os
+import asyncio
 import requests
 from telegram import Update
 from datetime import datetime
@@ -127,7 +128,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_type = update.message.chat.type
     text = update.message.text
     if not text:
-        await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın.')
+        await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın!')
         return
     if text.startswith("/"):
         command = text.split()[0].split("@")[0][1:]  
@@ -142,7 +143,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         elif command not in ["savunmasanayihaberleri", "yatirimhaberleri", "celikyatirim",
                              "encokyukselenhisseler", "encokislemgorenhisseler", "turkiye_haber"]:
-            await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın.')
+            await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın!')
             return
     else:
         await update.message.reply_text('Lütfen geçerli bir komut girin. Komutlar "/" ile başlamalıdır.')
@@ -203,22 +204,18 @@ async def turkiye_haber_command(update: Update):
 async def not_ekle_command(update: Update):
     user_id = update.message.chat.id
     text = update.message.text
-    note_text = None
     if len(text.split()) <= 1: 
-        await update.message.reply_text('Not kaydetmek için: \n\"/not_ekle 30.05.2024 14.00 - notunuzu_yazınız\"')
+        await update.message.reply_text('Not kaydetmek için: \n\"/not_ekle notunuzu_yazınız\"')
         await log_message(user_id, "İşlem Başarısız!", 'Not Kaydedilemedi!')
     else:
         try:
-            parts = text.split("/not_ekle ")[1].split(" - ")
-            tarih, saat = parts[0].split(" ")
-            tarih_obj = datetime.strptime(tarih, "%d.%m.%Y")
-            saat_obj = datetime.strptime(saat, "%H.%M")
-            yeni_not = f"{tarih_obj.strftime('%d.%m.%Y')} {saat_obj.strftime('%H:%M')}\n{parts[1]}"
+            note_text = text.split("/not_ekle ")[1]
+            yeni_not = f"{datetime.now().strftime('%d.%m.%Y %H:%M')}\n{note_text}"
             await not_ekle(yeni_not, user_id)
             await update.message.reply_text('Notunuz Kaydedildi!')
             await log_message(user_id, "İşlem Başarılı!", 'Not Kaydedildi!')
         except Exception as e:
-            await update.message.reply_text('Not eklenirken bir hata oluştu. Lütfen geçerli bir tarih, saat ve not formatı kullanın.')
+            await update.message.reply_text('Not eklenirken bir hata oluştu.')
             await log_message(user_id, "İşlem Başarısız!", f'Hata: {str(e)}')
 
 if __name__ == '__main__':
