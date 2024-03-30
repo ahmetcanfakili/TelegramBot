@@ -1,5 +1,4 @@
-import os
-import requests
+import os, requests
 from telegram import Update
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -24,63 +23,44 @@ def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
 
 def get_news_titles(url, tag_name, class_name):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    news_titles = soup.find_all(tag_name, class_=class_name)
-    titles = [title.text.strip().replace('', '') for title in news_titles]
-    return titles
+    return ([title.text.strip().replace('', '') for title in BeautifulSoup(requests.get(url).text, 'html.parser').find_all(tag_name, class_=class_name)])
 
 def get_news_titles_2(url):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    news_titles = soup.find_all('h3', class_="article-lead")
-    titles = [title.text.strip().replace('Ücretsiz', '') for title in news_titles]
-    return titles
+    return ([title.text.strip().replace('Ücretsiz', '') for title in BeautifulSoup(requests.get(url).text, 'html.parser').find_all('h3', class_="article-lead")])
 
 def get_defense_news():
-    titles1 = get_news_titles(url1, "h2", "post-title")
-    titles2 = get_news_titles(url4, "a", "baslik history-add")
-    combined_titles = "\n\n".join(titles1 + titles2)
-    return combined_titles
+    return ("\n\n".join(get_news_titles(url1, "h2", "post-title") + get_news_titles(url4, "a", "baslik history-add")))
 
 def get_investment_news():
-    titles1 = get_news_titles(url5, "a", "baslik history-add")
-    titles2 = get_news_titles(url6, "h3", "title")
-    combined_titles = "\n\n".join(titles1 + titles2)
-    return combined_titles
+    return ("\n\n".join(get_news_titles(url5, "a", "baslik history-add") + get_news_titles(url6, "h3", "title")))
 
 def get_steel_investment_news():
     return "\n".join(get_news_titles_2(url9))
 
 def get_most_rising_stocks():
-    titles = get_news_titles(url7, "a", "title stock-code")
-    return "\n".join(titles[:30])
+    return "\n".join((get_news_titles(url7, "a", "title stock-code"))[:30])
 
 def get_most_traded_stocks():
-    titles = get_news_titles(url8, "a", "title stock-code")
-    return "\n".join(titles[:30])
+    return "\n".join((get_news_titles(url8, "a", "title stock-code"))[:30])
 
 def turkiye_haber():
-    titles = get_news_titles(url2, "a", "site-url")
-    return "\n".join(titles[30:68])
+    return "\n".join((get_news_titles(url2, "a", "site-url"))[30:68])
 
 async def not_ekle(text, user_id):
-    folder_name = 'notlar_veritabani'
-    filename = os.path.join(folder_name, f'notlar_{user_id}.txt')
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
+    filename = os.path.join('notlar_veritabani', f'notlar_{user_id}.txt')
+    if not os.path.exists('notlar_veritabani'):
+        os.makedirs('notlar_veritabani')
     with open(filename, 'a') as f:
         f.write(text + '\n\n')
-        
+
 async def notlari_gonder(update):
     user_id = update.message.chat.id
-    folder_name = 'notlar_veritabani'
-    filename = os.path.join(folder_name, f'notlar_{user_id}.txt')
+    filename = os.path.join('notlar_veritabani', f'notlar_{user_id}.txt')
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             notlar = f.read()
         if not notlar.strip(): 
-            await update.message.reply_text("Notunuz Bulunmamaktadır.")
+            await update.message.reply_text("Notunuz Bulunmamaktadır!")
             await log_message(user_id, "İşlem Başarılı!", 'Not Bulunamadı!')
         else:
             await update.message.reply_text(notlar)
@@ -90,11 +70,9 @@ async def notlari_gonder(update):
         await log_message(user_id, "İşlem Başarılı!", 'Not Bulunamadı!')
 
 async def notlar(text, user_id):
-    folder_name = 'notlar_veritabani'
-    filename = os.path.join(folder_name, f'notlar_{user_id}.txt')
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-    with open(filename, 'a') as f:
+    if not os.path.exists('notlar_veritabani'):
+        os.makedirs('notlar_veritabani')
+    with open(os.path.join('notlar_veritabani', f'notlar_{user_id}.txt'), 'a') as f:
         f.write(text + '\n\n')
 
 def handle_response(text):
@@ -115,16 +93,13 @@ def handle_response(text):
         return 'Hatalı Komut Girdiniz!'
 
 async def log_message(user_id, text, response):
-    log_file = 'log.txt'
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
-    with open(log_file, 'a') as f:
-        text = text.replace('\n', ' ')
-        response = response.replace('\n\n', '\n')
-        f.write(f'{current_time}\n- User ({user_id}): "{text}"\n')
+    text = text.replace('\n', ' ').replace("'", "\\'")
+    response = response.replace('\n\n', '\n').replace("'", "\\'")
+    with open('log.txt', 'a') as f:
+        f.write(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n- User ({user_id}): "{text}"\n')
         f.write(f'- Bot: {response}\n\n')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_type = update.message.chat.type
     text = update.message.text
     if not text:
         await update.message.reply_text('Geçersiz bir komut girdiniz. Lütfen doğru bir komut kullanın!')
@@ -147,10 +122,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text('Lütfen geçerli bir komut girin. Komutlar "/" ile başlamalıdır.')
         return
-    if message_type == 'group':
+    if update.message.chat.type == 'group':
         if BOT_USERNAME in text:
-            new_text = text.replace(BOT_USERNAME, '').strip()
-            response = handle_response(new_text)
+            response = handle_response(text.replace(BOT_USERNAME, '').strip())
         else:
             response = handle_response(text)
     else:
@@ -208,9 +182,7 @@ async def not_ekle_command(update: Update):
         await log_message(user_id, "İşlem Başarısız!", 'Not Kaydedilemedi!')
     else:
         try:
-            note_text = text.split("/not_ekle ")[1]
-            yeni_not = f"{datetime.now().strftime('%d.%m.%Y %H:%M')}\n{note_text}"
-            await not_ekle(yeni_not, user_id)
+            await not_ekle(f"{datetime.now().strftime('%d.%m.%Y %H:%M')}\n{text.split('/not_ekle ')[1]}", user_id)
             await update.message.reply_text('Notunuz Kaydedildi!')
             await log_message(user_id, "İşlem Başarılı!", 'Not Kaydedildi!')
         except Exception as e:
