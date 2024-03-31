@@ -122,7 +122,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await chatbot_command(update)  
             return
         elif command == "start": 
-            await update.message.reply_text('Hoş Geldiniz.\nYardımcı Olabilmem İçin Komut Girin.')
+            await update.message.reply_text('Hoş Geldiniz.\nYardımcı Olabilmem İçin Komut Giriniz.')
             return
         elif command not in ["savunma_haber", "yatirim_haber", "celik_yatirim",
                              "yukselen_hisse", "islem_goren_hisse", "turkiye_haber"]:
@@ -130,7 +130,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await log_message(update.message.chat.id, "İşlem Başarısız!", "Geçersiz Komut.")
             return
     else:
-        await update.message.reply_text('Lütfen geçerli bir komut girin. Komutlar "/" ile başlamalıdır.')
+        await update.message.reply_text('Lütfen geçerli bir komut giriniz. Komutlar "/" ile başlamalıdır.')
         return
     if update.message.chat.type == 'group':
         if BOT_USERNAME in text:
@@ -140,7 +140,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         response = handle_response(text)
     if response is None:
-        await update.message.reply_text('Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut girin.')
+        await update.message.reply_text('Böyle bir komut bulunmamaktadır. Lütfen geçerli bir komut giriniz.')
         await log_message(update.message.chat.id, "İşlem Başarısız!", "Geçersiz Komut.")
     else:
         await update.message.reply_text(response)
@@ -194,6 +194,7 @@ async def chatbot_command(update: Update):
         await update.message.reply_text("Komut göndermek için:\n\"/chatbot komut_yazınız\"")
         return
     await update.message.reply_text("Komutunuz İşleniyor...")
+    await update.message.reply_text("Bu İşlem Biraz Zaman Alabilir.")
     generation_config = {
         "temperature": 0.9,
         "top_p": 1,
